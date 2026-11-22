@@ -29,6 +29,33 @@ module Ornament
       @extent = extent
       @layers = {}
       @layer_defaults = {}
+      @radial_zones = {}
+    end
+
+    # Allocate the motif radius into proportionally sized semantic zones.
+    # A 2:1 bricks/fringe allocation always places their boundary at 2/3
+    # of the radius, even when the creature changes size.
+    def radial_zones(outer:, **weights)
+      raise ArgumentError, 'outer radius must be positive' unless outer.to_f.positive?
+      raise ArgumentError, 'radial zones require positive weights' if weights.empty? || weights.values.any? { |v| !v.is_a?(Numeric) || !v.positive? }
+
+      total = weights.values.sum.to_f
+      cursor = 0.0
+      @radial_zones = weights.to_h do |name, weight|
+        start_radius = outer * cursor / total
+        cursor += weight
+        [name, (start_radius..(outer * cursor / total))]
+      end
+      @radial_zones
+    end
+
+    def radial(name, position)
+      zone = @radial_zones.fetch(name) { raise ArgumentError, "unknown radial zone #{name}" }
+      project = lambda do |fraction|
+        raise ArgumentError, 'radial position must be within 0..1' unless (0.0..1.0).cover?(fraction)
+        zone.begin + (zone.end - zone.begin) * fraction
+      end
+      position.is_a?(Range) ? (project.call(position.begin)..project.call(position.end)) : project.call(position)
     end
 
     # Group semantic visual layers with shared options such as color or sector.
