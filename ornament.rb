@@ -430,11 +430,16 @@ module Ornament
       end
     end
 
-    def draw_arcs(body, random, style_directives, count, radius:, sector:, sweep:, width:, color:)
-      count.times do
+    def draw_arcs(body, random, style_directives, count, radius:, sector:, sweep:, width:, color:, separated: false)
+      count.times do |index|
         start = sample(random, sector)
         extent = sample(random, sweep)
-        points = arc_points(sample(random, radius), start, start + extent)
+        ring_radius = if separated && radius.is_a?(Range)
+                        radius.begin + (radius.end - radius.begin) * (index + 0.5) / count
+                      else
+                        sample(random, radius)
+                      end
+        points = arc_points(ring_radius, start, start + extent)
         render_stroke(body, points, ink: color, width: sample(random, width),
                       style_directives: style_directives, random: random)
       end
@@ -452,34 +457,71 @@ module Ornament
       end
     end
 
-    def draw_confetti(body, random, style_directives, count, radius:, sector:, size:, color:)
-      count.times do
+    # Angular gaps are zones between evenly spaced spoke directions.
+    # Density weights make selected gaps busy and others quiet.
+    def gap_angles(count:, sector:)
+      first, last = sector.minmax
+      raise ArgumentError, 'spoke count must be at least two' if count < 2
+      Array.new(count) { |i| first + (last - first) * (i + 0.5) / count.to_f }
+    end
+
+    def confetti_angles(random, count:, between:, density:, clearance:)
+      spoke_count = between.fetch(:count)
+      spokes = gap_angles(count: spoke_count, sector: between.fetch(:sector))
+      weights = density || Array.new(spoke_count - 1, 1.0)
+      raise ArgumentError, 'density must have one weight per spoke gap' unless weights.length == spoke_count - 1
+      raise ArgumentError, 'density weights must be nonnegative with a positive sum' unless weights.all? { |w| w >= 0 } && weights.sum.positive?
+
+      Array.new(count) do
+        choice = random.rand * weights.sum
+        gap = weights.index { |w| (choice -= w) <= 0 } || weights.length - 1
+        low = spokes[gap] + clearance
+        high = spokes[gap + 1] - clearance
+        raise ArgumentError, 'spoke clearance leaves no room for dots' unless high > low
+        random.rand(low..high)
+      end
+    end
+
+    def draw_confetti(body, random, style_directives, count, radius:, size:, color:,
+                      sector: nil, between: nil, density: nil, clearance: 7)
+      raise ArgumentError, 'specify sector or between, not both' if sector && between
+      raise ArgumentError, 'specify either sector or between' unless sector || between
+      angles = if between
+                 confetti_angles(random, count: count, between: between,
+                                density: density, clearance: clearance)
+               else
+                 Array.new(count) { sample(random, sector) }
+               end
+      angles.each do |angle|
         r = sample(random, radius)
-        angle = sample(random, sector)
         x, y = point(r, angle)
         render_fill(body, blob_points(x, y, sample(random, size), steps: 14), fill: color,
                     style_directives: style_directives, random: random)
       end
     end
 
-    def draw_capsules(body, random, style_directives, count, radius:, sector:, length:, width:, colors:)
+    # One concentric ring per call; use separate radii for separate colors.
+    def draw_capsules(body, random, style_directives, count, radius:, sector:, length:, width:,
+                      color: nil, colors: nil, jitter: 1.5)
+      palette = Array(color || colors)
+      raise ArgumentError, 'capsules need a color' if palette.empty?
       first, last = sector.minmax
       count.times do |i|
-        angle = first + (last - first) * (i + 0.5) / count + random.rand(-4.0..4.0)
+        angle = first + (last - first) * (i + 0.5) / count + random.rand(-jitter.to_f..jitter.to_f)
         r = sample(random, radius)
         x, y = point(r, angle)
         long = sample(random, length)
         thick = sample(random, width)
-        ink = Array(colors)[i % Array(colors).length]
+        ink = palette[i % palette.length]
         points = rotate_and_translate(capsule_points(long, thick), angle + 90, x, y)
         render_fill(body, points, fill: ink, style_directives: style_directives, random: random)
       end
     end
 
-    def draw_spokes(body, random, style_directives, count, radius:, sector:, length:, width:, color:, tip:)
+    def draw_spokes(body, random, style_directives, count, radius:, sector:, length:, width:, color:, tip:, jitter: 0)
       first, last = sector.minmax
       count.times do |i|
-        angle = first + (last - first) * (i + 0.5) / count + random.rand(-3.5..3.5)
+        angle = first + (last - first) * (i + 0.5) / count + random.rand(-jitter.to_f..jitter.to_f)
         r = sample(random, radius)
         far = r + sample(random, length)
         x1, y1 = point(r, angle)
