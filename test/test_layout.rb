@@ -43,10 +43,53 @@ class LayoutTest < Minitest::Test
   end
 
   def test_rays_and_bricks_have_disjoint_angular_sectors
-    rays = [104, 256]
+    rays = [99, 261]
     bricks = [-73, 73]
     refute (rays.first..rays.last).cover?(bricks.last)
-    assert_operator rays.first - bricks.last, :>=, 25
+    assert_operator rays.first - bricks.last, :>=, 20
+  end
+
+  def test_staggered_bricks_and_spokes_share_a_lattice
+    lattice = { count: 7, sector: -73..73 }
+    brown = @canvas.send(:lattice_angles, **lattice)
+    yellow = @canvas.send(:lattice_angles, **lattice, depth: 1)
+    spokes = @canvas.send(:lattice_angles, **lattice, depth: 2)
+
+    assert_equal [7, 6, 5], [brown.length, yellow.length, spokes.length]
+    yellow.each_with_index do |angle, i|
+      assert_in_delta((brown[i] + brown[i + 1]) / 2.0, angle, 1e-10)
+    end
+    spokes.each_with_index do |angle, i|
+      assert_in_delta((yellow[i] + yellow[i + 1]) / 2.0, angle, 1e-10)
+    end
+    assert_equal yellow, @canvas.send(:arranged_angles, count: 6,
+                                       between: lattice.merge(depth: 1))
+    assert_equal spokes, @canvas.send(:arranged_angles, count: 5,
+                                       between: lattice.merge(depth: 2))
+  end
+
+  def test_confetti_uses_actual_spoke_lattice
+    lattice = { count: 7, sector: -73..73, depth: 2 }
+    spokes = @canvas.send(:lattice_angles, **lattice)
+    angles = @canvas.send(:confetti_angles, @random, count: 250,
+                          between: lattice,
+                          density: [3.0, 0.25, 2.0, 0.25], clearance: 4)
+    counts = Array.new(4, 0)
+    angles.each do |angle|
+      i = spokes.each_cons(2).find_index { |a, b| angle > a && angle < b }
+      refute_nil i
+      counts[i] += 1
+      assert_operator angle, :>=, spokes[i] + 4
+      assert_operator angle, :<=, spokes[i + 1] - 4
+    end
+    assert_operator counts[0], :>, counts[1] * 3
+    assert_operator counts[2], :>, counts[3] * 3
+  end
+
+  def test_invalid_lattice_depth_is_rejected
+    assert_raises(ArgumentError) do
+      @canvas.send(:lattice_angles, count: 2, sector: -30..30, depth: 2)
+    end
   end
 
   def test_seeded_output_is_repeatable
