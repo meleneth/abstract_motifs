@@ -115,6 +115,36 @@ class LayoutTest < Minitest::Test
     assert_operator (radii.max - radii.min).to_f / ring_count, :>, 11
   end
 
+  def test_radial_zones_allocate_two_thirds_to_bricks
+    motif = Ornament::Motif.new
+    zones = motif.radial_zones outer: 345, bricks: 2, fringe: 1
+    assert_in_delta 0, zones.fetch(:bricks).begin, 1e-10
+    assert_in_delta 230, zones.fetch(:bricks).end, 1e-10
+    assert_in_delta 230, zones.fetch(:fringe).begin, 1e-10
+    assert_in_delta 345, zones.fetch(:fringe).end, 1e-10
+    assert_in_delta 2.0 / 3.0, zones.fetch(:bricks).end / 345.0, 1e-10
+
+    brown = motif.radial(:bricks, 0.71..0.74)
+    yellow = motif.radial(:bricks, 0.91..0.94)
+    rays_from = motif.radial(:fringe, 0.02..0.14)
+    rays_to = motif.radial(:fringe, 0.85..1.0)
+
+    assert_operator brown.end, :<, yellow.begin
+    assert_operator yellow.end, :<, rays_from.begin
+    assert_operator rays_from.end, :<, rays_to.begin
+    assert_raises(ArgumentError) { motif.radial(:fringe, 1.1) }
+    assert_raises(ArgumentError) { motif.radial(:missing, 0.5) }
+  end
+
+  def test_radial_zones_are_scale_independent
+    small = Ornament::Motif.new
+    large = Ornament::Motif.new
+    small.radial_zones outer: 150, bricks: 2, fringe: 1
+    large.radial_zones outer: 450, bricks: 2, fringe: 1
+    assert_in_delta 3 * small.radial(:bricks, 0.72), large.radial(:bricks, 0.72), 1e-10
+    assert_in_delta 3 * small.radial(:fringe, 0.9), large.radial(:fringe, 0.9), 1e-10
+  end
+
   def test_seeded_output_is_repeatable
     render = lambda do
       Ornament.canvas(400, 400, seed: 10) do
