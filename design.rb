@@ -24,10 +24,14 @@ def build_scene(seed: 2026, &placement)
     end
 
     # Layer names describe the visual grammar; each layer owns its shapes.
-    # Brick rings and spokes share a staggered lattice, independent of coordinates.
+    # Brick rings occupy the inner 2/3 of the motif radius; the sunburst
+    # lives in the outer 1/3. Both brick rings retain their shared lattice.
     motif :organism, extent: 345, style: :hand_drawn do
+      radial_zones outer: 345, bricks: 2, fringe: 1
+
       layer :sunburst, color: :sun, sector: 98..262 do
-        rays 27, from: 112..136, to: 204..292,
+        rays 27, from: radial(:fringe, 0.02..0.14),
+             to: radial(:fringe, 0.85..1.0),
              width: 5..8, jitter: 2.4
       end
       layer :ink_contours, color: :ink do
@@ -42,11 +46,11 @@ def build_scene(seed: 2026, &placement)
         confetti 30, radius: 119..129, sector: -73..73, size: 3..5
       end
       layer :inner_bricks, color: :blush do
-        capsules 7, radius: 164..169, sector: -73..73,
+        capsules 7, radius: radial(:bricks, 0.71..0.74), sector: -73..73,
                  length: 49..57, width: 26..32
       end
       layer :outer_bricks, color: :butter do
-        capsules 6, radius: 210..216,
+        capsules 6, radius: radial(:bricks, 0.91..0.94),
                  between: { count: 7, sector: -73..73, depth: 1 },
                  length: 55..64, width: 26..32
       end
