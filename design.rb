@@ -23,20 +23,28 @@ def build_scene(seed: 2026, &placement)
       echo dx: 1.4, dy: 1.9, opacity: 0.12, width_scale: 0.46
     end
 
-    motif :organism, extent: 290, style: :hand_drawn do
-      rays 26, from: 118..140, to: 175..260, sector: 93..263,
-           width: 5..9, color: :sun, jitter: 3
-      arcs 5, radius: 42..87, sector: 0..320, sweep: 50..135,
-           width: 10..15, color: :ink
-      center radius: 20, color: :ink
-      petals 22, radius: 93..100, sector: -88..100,
-             length: 14..28, width: 11..17, color: :lavender
-      confetti 65, radius: 109..239, sector: -79..102,
-               size: 4..8, color: :berry
-      capsules 10, radius: 164..185, sector: -75..110,
-               length: 62..96, width: 33..50, colors: %i[blush butter]
-      spokes 5, radius: 221..242, sector: -76..111,
-             length: 55..96, width: 13..18, color: :lavender, tip: 24..31
+    # Disjoint angular sectors and concentric radial bands:
+    # rays opposite bricks, separated brown/yellow rings, dots in spoke gaps.
+    motif :organism, extent: 345, style: :hand_drawn do
+      rays 28, from: 115..137, to: 185..248, sector: 104..256,
+           width: 4..8, color: :sun, jitter: 2
+      arcs 4, radius: 40..83, separated: true, sector: 120..305,
+           sweep: 65..145, width: 9..12, color: :ink
+      center radius: 19, color: :ink
+      petals 24, radius: 88..99, sector: -76..76,
+             length: 13..24, width: 10..15, color: :lavender
+      confetti 30, radius: 119..129, sector: -73..73,
+               size: 3..5, color: :berry
+      capsules 7, radius: 164..169, sector: -73..73,
+               length: 49..57, width: 26..32, color: :blush
+      capsules 7, radius: 210..216, sector: -73..73,
+               length: 55..64, width: 26..32, color: :butter
+      confetti 72, radius: 244..294,
+               between: { count: 5, sector: -76..76 },
+               density: [2.0, 0.25, 1.8, 0.30], clearance: 8,
+               size: 3..6, color: :berry
+      spokes 5, radius: 254..262, sector: -76..76,
+             length: 45..67, width: 10..14, color: :lavender, tip: 17..22
     end
 
     instance_eval(&placement)
@@ -46,11 +54,11 @@ end
 hero_scene = build_scene do
   colony :organism,
          count: 3,
-         region: [150, 120, 1160, 850],
-         scale: 0.86..1.06,
+         region: [140, 140, 1250, 910],
+         scale: 0.73..0.85,
          rotate: -15..210,
          seed: 2_101,
-         spacing: 235,
+         spacing: 410,
          drift: 0.20
 end
 
@@ -58,10 +66,10 @@ colony_scene = build_scene(seed: 2037) do
   colony :organism,
          count: 8,
          region: [90, 90, 1310, 930],
-         scale: 0.54..0.92,
+         scale: 0.40..0.61,
          rotate: -20..235,
          seed: 7_107,
-         spacing: 145,
+         spacing: 290,
          drift: 0.28
 end
 
