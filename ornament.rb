@@ -21,17 +21,33 @@ module Ornament
   end
 
   class Motif
-    attr_reader :instructions, :style_names, :extent
+    attr_reader :instructions, :style_names, :extent, :layers
 
     def initialize(style_names: [], extent: nil)
       @instructions = []
       @style_names = Array(style_names).compact
       @extent = extent
+      @layers = {}
+      @layer_defaults = {}
+    end
+
+    # Group semantic visual layers with shared options such as color or sector.
+    # Layers keep declarations short without introducing bespoke shape types.
+    def layer(name, **defaults, &block)
+      raise ArgumentError, "duplicate layer #{name}" if @layers.key?(name)
+      raise ArgumentError, 'layer requires a block' unless block
+      @layers[name] = { defaults: defaults, start: @instructions.length }
+      previous_defaults = @layer_defaults
+      @layer_defaults = previous_defaults.merge(defaults)
+      instance_eval(&block)
+      @layers[name][:finish] = @instructions.length
+    ensure
+      @layer_defaults = previous_defaults if defined?(previous_defaults)
     end
 
     %i[rays arcs center petals confetti capsules spokes].each do |operation|
       define_method(operation) do |*args, **options|
-        @instructions << [operation, args, options]
+        @instructions << [operation, args, @layer_defaults.merge(options)]
       end
     end
   end
