@@ -23,30 +23,44 @@ def build_scene(seed: 2026, &placement)
       echo dx: 1.4, dy: 1.9, opacity: 0.12, width_scale: 0.46
     end
 
-    # A shared radial lattice staggers the concentric brick rings. Spokes
-    # emerge between outer bricks; dot density varies between those spokes.
+    # Layer names describe the visual grammar; each layer owns its shapes.
+    # Brick rings and spokes share a staggered lattice, independent of coordinates.
     motif :organism, extent: 345, style: :hand_drawn do
-      rays 23, from: 119..145, to: 165..232, sector: 99..261,
-           width: 4..8, color: :sun, jitter: 3.5
-      arcs 4, radius: 40..83, separated: true, sector: 120..305,
-           sweep: 65..145, width: 9..12, color: :ink
-      center radius: 19, color: :ink
-      petals 24, radius: 88..99, sector: -76..76,
-             length: 13..24, width: 10..15, color: :lavender
-      confetti 30, radius: 119..129, sector: -73..73,
-               size: 3..5, color: :berry
-      capsules 7, radius: 164..169, sector: -73..73,
-               length: 49..57, width: 26..32, color: :blush
-      capsules 6, radius: 210..216,
-               between: { count: 7, sector: -73..73, depth: 1 },
-               length: 55..64, width: 26..32, color: :butter
-      confetti 72, radius: 244..294,
+      layer :sunburst, color: :sun, sector: 98..262 do
+        rays 27, from: 112..136, to: 204..292,
+             width: 5..8, jitter: 2.4
+      end
+      layer :ink_contours, color: :ink do
+        arcs 3, radius: 39..84, separated: true, sector: 0..360,
+             sweep: 290..334, width: 9..11
+        center radius: 19
+      end
+      layer :petal_fringe, color: :lavender, sector: -76..76 do
+        petals 24, radius: 88..99, length: 13..24, width: 10..15
+      end
+      layer :inner_dots, color: :berry do
+        confetti 30, radius: 119..129, sector: -73..73, size: 3..5
+      end
+      layer :inner_bricks, color: :blush do
+        capsules 7, radius: 164..169, sector: -73..73,
+                 length: 49..57, width: 26..32
+      end
+      layer :outer_bricks, color: :butter do
+        capsules 6, radius: 210..216,
+                 between: { count: 7, sector: -73..73, depth: 1 },
+                 length: 55..64, width: 26..32
+      end
+      layer :outer_dots, color: :berry do
+        confetti 72, radius: 244..294,
+                 between: { count: 7, sector: -73..73, depth: 2 },
+                 density: [2.0, 0.25, 1.8, 0.30], clearance: 4,
+                 size: 3..6
+      end
+      layer :antennae, color: :lavender do
+        spokes 5, radius: 206..214,
                between: { count: 7, sector: -73..73, depth: 2 },
-               density: [2.0, 0.25, 1.8, 0.30], clearance: 4,
-               size: 3..6, color: :berry
-      spokes 5, radius: 206..214,
-             between: { count: 7, sector: -73..73, depth: 2 },
-             length: 88..124, width: 11..16, color: :lavender, tip: 18..24
+               length: 88..124, width: 11..16, tip: 18..24
+      end
     end
 
     instance_eval(&placement)
