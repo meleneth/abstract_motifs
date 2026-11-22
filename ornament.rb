@@ -465,6 +465,21 @@ module Ornament
       Array.new(count) { |i| first + (last - first) * (i + 0.5) / count.to_f }
     end
 
+    # Midpoints between ring members. Reuse this lattice for a staggered ring
+    # and for spokes, so their alignment survives count/sector changes.
+    def interstitial_angles(count:, sector:)
+      gap_angles(count: count, sector: sector).each_cons(2).map do |left, right|
+        (left + right) / 2.0
+      end
+    end
+
+    def arranged_angles(count:, sector: nil, between: nil)
+      raise ArgumentError, 'specify sector or between, not both' if sector && between
+      angles = between ? interstitial_angles(**between) : gap_angles(count: count, sector: sector)
+      raise ArgumentError, 'count must match interstitial gap count' unless angles.length == count
+      angles
+    end
+
     def confetti_angles(random, count:, between:, density:, clearance:)
       spoke_count = between.fetch(:count)
       spokes = gap_angles(count: spoke_count, sector: between.fetch(:sector))
@@ -500,14 +515,15 @@ module Ornament
       end
     end
 
-    # One concentric ring per call; use separate radii for separate colors.
-    def draw_capsules(body, random, style_directives, count, radius:, sector:, length:, width:,
-                      color: nil, colors: nil, jitter: 1.5)
+    # Rings can share a reference lattice: 'between:' places bricks or spokes
+    # at the interstices of another ring rather than merely applying an offset.
+    def draw_capsules(body, random, style_directives, count, radius:, length:, width:,
+                      sector: nil, between: nil, color: nil, colors: nil, jitter: 1.5)
       palette = Array(color || colors)
       raise ArgumentError, 'capsules need a color' if palette.empty?
-      first, last = sector.minmax
-      count.times do |i|
-        angle = first + (last - first) * (i + 0.5) / count + random.rand(-jitter.to_f..jitter.to_f)
+      angles = arranged_angles(count: count, sector: sector, between: between)
+      angles.each_with_index do |base_angle, i|
+        angle = base_angle + random.rand(-jitter.to_f..jitter.to_f)
         r = sample(random, radius)
         x, y = point(r, angle)
         long = sample(random, length)
@@ -518,10 +534,11 @@ module Ornament
       end
     end
 
-    def draw_spokes(body, random, style_directives, count, radius:, sector:, length:, width:, color:, tip:, jitter: 0)
-      first, last = sector.minmax
-      count.times do |i|
-        angle = first + (last - first) * (i + 0.5) / count + random.rand(-jitter.to_f..jitter.to_f)
+    def draw_spokes(body, random, style_directives, count, radius:, length:, width:, color:, tip:,
+                    sector: nil, between: nil, jitter: 0)
+      angles = arranged_angles(count: count, sector: sector, between: between)
+      angles.each do |base_angle|
+        angle = base_angle + random.rand(-jitter.to_f..jitter.to_f)
         r = sample(random, radius)
         far = r + sample(random, length)
         x1, y1 = point(r, angle)
