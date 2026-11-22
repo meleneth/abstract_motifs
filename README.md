@@ -1,27 +1,31 @@
 # abstract_motifs
 
-A Ruby-first generative visual design language for creating families of abstract SVG artwork.
+A dependency-free, Ruby-first generative design language for SVG artwork.
 
-Rather than manually composing SVG paths, define reusable **motifs** using semantic visual primitives (rays, arcs, petals, capsules, confetti, spokes), then stamp them into compositions with seeded variation.
+Define a **creature** as a reusable motif composed of visual primitives, then place individual instances or generate a **colony** with independent scales, orientations, and seeds. Composable style modifiers add an irregular, hand-drawn character without introducing separate “wobbly capsule” or “personal arc” primitives.
 
-## Run
+## Quick start
 
-Requires Ruby with its standard library. No gems required.
+Requires Ruby (standard library only).
 
 ```sh
 ruby design.rb
 ```
 
-This writes `design.svg` in the current directory.
+This generates **two SVGs** in the current directory:
 
-## Files
+- `design.svg`: a three-creature composition.
+- `colony.svg`: a denser eight-creature composition.
 
-- `ornament.rb` - dependency-free DSL and SVG rendering engine
-- `design.rb` - runnable, approximately 30-line design definition
-- `examples/generated_organisms.svg` - example output
-- `examples/abstract_motifs.svg` - vector tracing of the original reference artwork
+You can override their paths:
 
-## DSL example
+```sh
+ruby design.rb custom_design.svg custom_colony.svg
+```
+
+Committed reference renders are in `examples/design.svg` and `examples/colony.svg`. `examples/abstract_motifs.svg` is a vector tracing of the original inspiration.
+
+## DSL
 
 ```ruby
 require_relative 'ornament'
@@ -29,7 +33,15 @@ require_relative 'ornament'
 art = Ornament.canvas(800, 600, seed: 42, background: :paper) do
   palette paper: '#faf9f4', ink: '#272438', sun: '#eadca7'
 
-  motif :sunburst do
+  style :hand_drawn do
+    asymmetry amount: 0.07
+    wobble amplitude: 3.8, wavelength: 30
+    roughness amplitude: 0.9, wavelength: 6
+    pressure amount: 0.22, wavelength: 11
+    echo dx: 1.4, dy: 1.9, opacity: 0.12
+  end
+
+  motif :creature, extent: 200, style: :hand_drawn do
     rays 24, from: 90..110, to: 145..180,
          sector: 0..360, width: 5..9, color: :sun
     arcs 4, radius: 35..70, sector: 0..320,
@@ -37,12 +49,28 @@ art = Ornament.canvas(800, 600, seed: 42, background: :paper) do
     center radius: 18, color: :ink
   end
 
-  stamp :sunburst, at: [400, 300]
+  colony :creature, count: 6,
+         region: [40, 40, 760, 560],
+         scale: 0.5..0.8,
+         rotate: -180..180,
+         spacing: 100,
+         seed: 88
 end
 
-File.write('sunburst.svg', art.svg)
+File.write('creatures.svg', art.svg)
 ```
 
-## Design direction
+### Vocabulary
 
-This is an initial proof of concept, not a complete scene-graph architecture. The next steps are spatial constraints and relationships, configurable sampling distributions, and a deterministic intermediate scene graph so multiple renderers and an editor can share the same composition model.
+- `motif` declares a reusable group of semantic primitives.
+- `stamp` draws one motif at a position, scale, rotation and optional seed.
+- `colony` generates multiple motif instances within a region, varying scale and rotation.
+- `style` declares reusable geometric modifiers, optionally extending other styles with `extends:`.
+- Modifiers: `wobble`, `roughness`, `asymmetry`, `pressure`, `echo`.
+- Primitives: `center`, `arcs`, `rays`, `petals`, `confetti`, `capsules`, `spokes`.
+
+## Architecture
+
+The primitives generate sampled geometry; the modifier pipeline deforms paths before SVG output. `colony` performs seeded, best-effort clustered placement. This is still an early proof of concept: it does **not** provide strict non-overlap guarantees, a general-purpose scene graph, or true continuously expanded variable-width stroke outlines.
+
+The aim is to make aesthetic characteristics composable independently of primitive types and to keep designs short enough to express in a few dozen lines of Ruby.
