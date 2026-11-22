@@ -467,24 +467,24 @@ module Ornament
 
     # Midpoints between ring members. Reuse this lattice for a staggered ring
     # and for spokes, so their alignment survives count/sector changes.
-    def interstitial_angles(count:, sector:)
-      gap_angles(count: count, sector: sector).each_cons(2).map do |left, right|
-        (left + right) / 2.0
-      end
+    def lattice_angles(count:, sector:, depth: 0)
+      angles = gap_angles(count: count, sector: sector)
+      depth.times { angles = angles.each_cons(2).map { |a, b| (a + b) / 2.0 } }
+      raise ArgumentError, 'lattice depth exceeds count' if angles.empty?
+      angles
     end
 
     def arranged_angles(count:, sector: nil, between: nil)
       raise ArgumentError, 'specify sector or between, not both' if sector && between
-      angles = between ? interstitial_angles(**between) : gap_angles(count: count, sector: sector)
-      raise ArgumentError, 'count must match interstitial gap count' unless angles.length == count
+      angles = between ? lattice_angles(**between) : gap_angles(count: count, sector: sector)
+      raise ArgumentError, 'count must match lattice slot count' unless angles.length == count
       angles
     end
 
     def confetti_angles(random, count:, between:, density:, clearance:)
-      spoke_count = between.fetch(:count)
-      spokes = gap_angles(count: spoke_count, sector: between.fetch(:sector))
-      weights = density || Array.new(spoke_count - 1, 1.0)
-      raise ArgumentError, 'density must have one weight per spoke gap' unless weights.length == spoke_count - 1
+      spokes = lattice_angles(**between)
+      weights = density || Array.new(spokes.length - 1, 1.0)
+      raise ArgumentError, 'density must have one weight per spoke gap' unless weights.length == spokes.length - 1
       raise ArgumentError, 'density weights must be nonnegative with a positive sum' unless weights.all? { |w| w >= 0 } && weights.sum.positive?
 
       Array.new(count) do
