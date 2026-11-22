@@ -92,6 +92,29 @@ class LayoutTest < Minitest::Test
     end
   end
 
+  def test_named_layers_inherit_defaults_and_allow_overrides
+    motif = Ornament::Motif.new
+    motif.layer :ink_contours, color: :ink, sector: 0..360 do
+      arcs 3, radius: 40..84, sweep: 290..334, width: 9..11
+      center radius: 19, color: :override
+    end
+    assert_equal [:arcs, :center], motif.instructions.map(&:first)
+    assert_equal :ink, motif.instructions[0][2][:color]
+    assert_equal(0..360, motif.instructions[0][2][:sector])
+    assert_equal :override, motif.instructions[1][2][:color]
+    assert_equal 2, motif.layers[:ink_contours][:finish]
+    assert_raises(ArgumentError) { motif.layer(:ink_contours) { center radius: 10 } }
+  end
+
+  def test_ink_ring_coverage_has_small_interruptions
+    ring_count = 3
+    sweeps = 290..334
+    radii = 39..84
+    assert_operator sweeps.min, :>=, 280
+    assert_operator 360 - sweeps.max, :>=, 10
+    assert_operator (radii.max - radii.min).to_f / ring_count, :>, 11
+  end
+
   def test_seeded_output_is_repeatable
     render = lambda do
       Ornament.canvas(400, 400, seed: 10) do
