@@ -1,76 +1,53 @@
 # abstract_motifs
 
-A dependency-free, Ruby-first generative design language for SVG artwork.
+A dependency-free, Ruby-first generative SVG design language.
 
-Define a **creature** as a reusable motif composed of visual primitives, then place individual instances or generate a **colony** with independent scales, orientations, and seeds. Composable style modifiers add an irregular, hand-drawn character without introducing separate “wobbly capsule” or “personal arc” primitives.
+A **motif** describes a creature's visual grammar, while **styles** modify the geometry for the original's irregular, hand-drawn character. A **colony** creates related creatures at varying scales and orientations.
 
-## Quick start
+## Run
 
-Requires Ruby (standard library only).
+Requires Ruby and the standard library only.
 
 ```sh
 ruby design.rb
+ruby test/test_layout.rb
 ```
 
-This generates **two SVGs** in the current directory:
+The demo writes `design.svg` (three creatures) and `colony.svg` (eight creatures). Paths can be overridden with `ruby design.rb output.svg colony.svg`.
 
-- `design.svg`: a three-creature composition.
-- `colony.svg`: a denser eight-creature composition.
+## Source-image layout rules
 
-You can override their paths:
+The radial geometry is intentionally divided into non-overlapping bands and angular sectors.
 
-```sh
-ruby design.rb custom_design.svg custom_colony.svg
-```
+- Inner ink arcs and center are separate from the lilac petal ring.
+- Blush (brown) capsules occupy an inner concentric ring; butter (yellow) capsules occupy an outer concentric ring. They are **not** alternating within the same ring.
+- Pale yellow rays occupy the opposite angular sector from the capsules, avoiding the block region.
+- Berry dots between the outer lavender spokes use weighted gap densities, creating alternating **dense and sparse** bands while maintaining clearance from each spoke.
+- The corresponding ranges and separated ring logic are covered by tests in `test/test_layout.rb`.
 
-Committed reference renders are in `examples/design.svg` and `examples/colony.svg`. `examples/abstract_motifs.svg` is a vector tracing of the original inspiration.
+The layout remains deterministic for fixed seeds.
 
-## DSL
+## DSL excerpt
 
 ```ruby
-require_relative 'ornament'
-
-art = Ornament.canvas(800, 600, seed: 42, background: :paper) do
-  palette paper: '#faf9f4', ink: '#272438', sun: '#eadca7'
-
-  style :hand_drawn do
-    asymmetry amount: 0.07
-    wobble amplitude: 3.8, wavelength: 30
-    roughness amplitude: 0.9, wavelength: 6
-    pressure amount: 0.22, wavelength: 11
-    echo dx: 1.4, dy: 1.9, opacity: 0.12
-  end
-
-  motif :creature, extent: 200, style: :hand_drawn do
-    rays 24, from: 90..110, to: 145..180,
-         sector: 0..360, width: 5..9, color: :sun
-    arcs 4, radius: 35..70, sector: 0..320,
-         sweep: 50..120, width: 10..15, color: :ink
-    center radius: 18, color: :ink
-  end
-
-  colony :creature, count: 6,
-         region: [40, 40, 760, 560],
-         scale: 0.5..0.8,
-         rotate: -180..180,
-         spacing: 100,
-         seed: 88
+motif :organism, extent: 345, style: :hand_drawn do
+  rays 28, from: 115..137, to: 185..248,
+       sector: 104..256, width: 4..8, color: :sun
+  capsules 7, radius: 164..169, sector: -73..73,
+           length: 49..57, width: 26..32, color: :blush
+  capsules 7, radius: 210..216, sector: -73..73,
+           length: 55..64, width: 26..32, color: :butter
+  confetti 72, radius: 244..294,
+           between: { count: 5, sector: -76..76 },
+           density: [2.0, 0.25, 1.8, 0.30],
+           size: 3..6, color: :berry
+  spokes 5, radius: 254..262, sector: -76..76,
+         length: 45..67, width: 10..14, color: :lavender, tip: 17..22
 end
-
-File.write('creatures.svg', art.svg)
 ```
 
-### Vocabulary
+See `design.rb` for the complete motif and `ornament.rb` for primitive implementations.
 
-- `motif` declares a reusable group of semantic primitives.
-- `stamp` draws one motif at a position, scale, rotation and optional seed.
-- `colony` generates multiple motif instances within a region, varying scale and rotation.
-- `style` declares reusable geometric modifiers, optionally extending other styles with `extends:`.
-- Modifiers: `wobble`, `roughness`, `asymmetry`, `pressure`, `echo`.
-- Primitives: `center`, `arcs`, `rays`, `petals`, `confetti`, `capsules`, `spokes`.
+## Current limitations
 
-## Architecture
-
-The primitives generate sampled geometry; the modifier pipeline deforms paths before SVG output. `colony` performs seeded, best-effort clustered placement. This is still an early proof of concept: it does **not** provide strict non-overlap guarantees, a general-purpose scene graph, or true continuously expanded variable-width stroke outlines.
-
-The aim is to make aesthetic characteristics composable independently of primitive types and to keep designs short enough to express in a few dozen lines of Ruby.
+`colony` uses best-effort placement, not guaranteed non-overlap between different creatures. Style deformation is sampled geometry, not a complete renderer-independent scene graph. Existing `examples/*.svg` are historical captures; regenerate them from the current demo when comparing the updated radial layout.
