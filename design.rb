@@ -44,9 +44,9 @@ def build_scene(seed: 2026, &placement)
                between: { count: 7, sector: -73..73, depth: 2 },
                density: [2.0, 0.25, 1.8, 0.30], clearance: 4,
                size: 3..6, color: :berry
-      spokes 5, radius: 254..262,
+      spokes 5, radius: 206..214,
              between: { count: 7, sector: -73..73, depth: 2 },
-             length: 45..67, width: 10..14, color: :lavender, tip: 17..22
+             length: 88..124, width: 11..16, color: :lavender, tip: 18..24
     end
 
     instance_eval(&placement)
